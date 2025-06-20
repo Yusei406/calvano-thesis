@@ -1,0 +1,10 @@
+🎯 Simple Calvano Test
+Episodes: 5000, Seeds: 5
+Training seed 1/5 (seed=7270)
+Training seed 2/5 (seed=860)
+Training seed 3/5 (seed=5390)
+Training seed 4/5 (seed=5191)
+Training seed 5/5 (seed=5734)
+✅ Individual: 0.0048
+✅ Joint: 0.0096
+🎉 Test successful!
