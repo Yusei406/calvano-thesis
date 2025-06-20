@@ -1,0 +1,39 @@
+# Calvano et al. (2020) Configuration
+# Paper-exact parameters for Q-learning algorithmic pricing
+
+calvano_params:
+  # Simulation parameters
+  n_episodes: 50000
+  n_agents: 2
+  n_actions: 11
+  
+  # Learning parameters (Table A1)
+  learning_rate: 0.1      # α
+  discount_factor: 0.95   # δ
+  epsilon: 0.1           # ε₀ initial exploration
+  epsilon_decay: 0.95    # γ decay rate
+  
+  # Demand function parameters
+  demand_intercept: 2.0   # a₀
+  demand_slope: 1.0       # μ 
+  marginal_cost: 0.0      # c
+  outside_option: true
+  
+  # Convergence criteria
+  convergence_window: 1000
+  convergence_tolerance: 1e-4
+  
+  # Price grid
+  price_min: 0.0
+  price_max: 1.0
+
+# Alternative configurations for sensitivity analysis
+sensitivity:
+  grid_sizes: [11, 21, 41]
+  mu_values: [0.25, 1.0, 4.0]
+  
+# Paper targets for validation
+paper_targets:
+  individual_profit: 0.18
+  joint_profit: 0.26
+  convergence_rate: 0.9
