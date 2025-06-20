@@ -1,6 +1,8 @@
 # Calvano et al. (2020) - Strict Paper Replication
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/[USER]/calvano-strict-final/workflows/CI/badge.svg)](https://github.com/[USER]/calvano-strict-final/actions)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Paper](https://img.shields.io/badge/paper-Calvano%20et%20al.%20(2020)-blue)](https://www.aeaweb.org/articles?id=10.1257/aer.20190623)
 
