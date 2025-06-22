@@ -21,6 +21,8 @@ def main():
     parser.add_argument('--episodes', type=int, default=10000)
     parser.add_argument('--out', type=str, default='figs/figure2b.png')
     parser.add_argument('--fast', action='store_true', help='Fast mode: 500 episodes')
+    parser.add_argument('--dpi', type=int, default=300,
+                       help='Output DPI for print quality (default: 300)')
     
     args = parser.parse_args()
     
@@ -103,7 +105,7 @@ def main():
     ax2.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(args.out, dpi=300, bbox_inches='tight')
+    plt.savefig(args.out, dpi=args.dpi, bbox_inches='tight')
     
     print(f"💾 Figure saved: {args.out}")
     

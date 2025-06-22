@@ -1,38 +1,40 @@
 """
-Training script for Calvano et al. (2020) Q-learning implementation.
+Training module for Calvano et al. (2020) Q-learning agents.
 """
 
 import numpy as np
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Tuple, Dict, Any, List, Optional
+
 from env import DemandEnvironment
 from agent import QLearningAgent
 
 
+ITERATIONS_PER_EPISODE = 25000  # Calvano specification
+
+
 def train_agents(
     n_episodes: int = 2000,
-    iterations_per_episode: int = 25000,  # Calvano specification
+    iterations_per_episode: int = ITERATIONS_PER_EPISODE,
     learning_rate: float = 0.15,
     discount_factor: float = 0.95,
-    epsilon_decay_beta: float = 4e-6,     # β = 4×10^-6
-    memory_length: int = 1,               # k = 1 period
-    convergence_window: int = 100,
-    convergence_threshold: float = 0.001,
+    epsilon_decay_beta: float = 9.21e-5,
+    memory_length: int = 1,
     rng_seed: Optional[int] = None,
     verbose: bool = True
 ) -> Tuple[List[QLearningAgent], DemandEnvironment, Dict[str, Any]]:
     """
-    Train Q-learning agents with Calvano et al. (2020) specifications.
+    Train Q-learning agents with Calvano et al. (2020) specification.
     """
-    # Initialize environment
+    # Environment setup with complete Calvano parameters
     env = DemandEnvironment(
-        n_agents=2,
-        demand_intercept=0.0,
-        demand_slope=0.25,
-        marginal_cost=1.0,
+        demand_intercept=0.0,      # a_0 = 0
+        product_quality=2.0,       # a_i = 2
+        demand_slope=0.25,         # μ = 0.25
+        marginal_cost=1.0,         # c = 1
         rng_seed=rng_seed
     )
     
-    # Initialize agents
+    # Agent setup
     agents = []
     for i in range(env.n_agents):
         agent = QLearningAgent(
@@ -41,12 +43,13 @@ def train_agents(
             learning_rate=learning_rate,
             discount_factor=discount_factor,
             epsilon_decay_beta=epsilon_decay_beta,
+            
             memory_length=memory_length,
             rng_seed=rng_seed + i if rng_seed else None
         )
         agents.append(agent)
     
-    # Training history tracking
+    # Training history
     history = {
         'episodes': [],
         'individual_profits': [],
@@ -88,12 +91,12 @@ def train_agents(
             # Environment step
             _, rewards, _, info = env.step(new_prices)
             
-            # Agent learning
+            # Agent learning updates
             for agent in agents:
                 agent.learn(new_prices)
             
-            # Track data
-            if iteration % 100 == 0:
+            # Sample episode data
+            if iteration % 250 == 0:
                 episode_profits.append(rewards.copy())
         
         # Episode summary
@@ -122,19 +125,20 @@ def train_agents(
         'total_iterations': history['total_iterations'],
         'final_individual_profit': final_individual,
         'final_joint_profit': final_joint,
+        'individual_profit': final_individual,
+        'joint_profit': final_joint,
         'nash_ratio_individual': final_individual / nash_eq['individual_profit'],
         'nash_ratio_joint': final_joint / nash_eq['joint_profit'],
         'final_epsilon': agents[0].current_epsilon,
-        'nash_benchmark': nash_eq,
-        'cooperative_benchmark': coop_eq
     }
     
-    history['training_summary'] = training_summary
-    
     if verbose:
-        print(f"\n🏁 Training Complete:")
-        print(f"   Final individual: {final_individual:.4f}")
-        print(f"   Nash ratio: {training_summary['nash_ratio_individual']:.1%}")
+        print(f"\n🎯 Training Complete:")
+        print(f"   Final individual profit: {final_individual:.4f} ({training_summary['nash_ratio_individual']:.1%} Nash)")
+        print(f"   Final joint profit: {final_joint:.4f} ({training_summary['nash_ratio_joint']:.1%} Nash)")
+        print(f"   Final epsilon: {agents[0].current_epsilon:.6f}")
+    
+    history['training_summary'] = training_summary
     
     return agents, env, history
 
@@ -144,44 +148,49 @@ def multi_seed_training(
     seeds: Optional[List[int]] = None,
     **kwargs
 ) -> Dict[str, Any]:
-    """Run training with multiple random seeds."""
+    """
+    Run training with multiple random seeds for statistical validation.
+    """
     if seeds is None:
-        np.random.seed(42)
-        seeds = np.random.randint(0, 10000, n_seeds).tolist()
+        seeds = list(range(n_seeds))
     
-    results = []
-    for i, seed in enumerate(seeds):
-        print(f"Training seed {i+1}/{n_seeds} (seed={seed})")
-        agents, env, history = train_agents(rng_seed=seed, verbose=False, **kwargs)
-        results.append({
-            'seed': seed,
-            'agents': agents,
-            'env': env,
-            'history': history,
-            'summary': history['training_summary']
-        })
-    
-    # Aggregate statistics
-    individual_profits = [r['summary']['final_individual_profit'] for r in results]
-    joint_profits = [r['summary']['final_joint_profit'] for r in results]
-    nash_ratios = [r['summary']['nash_ratio_individual'] for r in results]
-    
-    return {
-        'n_seeds': n_seeds,
-        'seeds': seeds,
-        'individual_results': results,
-        'summary_stats': {
-            'individual_profit': {
-                'mean': np.mean(individual_profits),
-                'std': np.std(individual_profits)
-            },
-            'joint_profit': {
-                'mean': np.mean(joint_profits),
-                'std': np.std(joint_profits)
-            },
-            'nash_ratio_individual': {
-                'mean': np.mean(nash_ratios),
-                'std': np.std(nash_ratios)
-            }
-        }
+    results = {
+        'individual_profits': [],
+        'joint_profits': [],
+        'nash_ratios_individual': [],
+        'nash_ratios_joint': [],
+        'seeds': seeds
     }
+    
+    for seed in seeds:
+        agents, env, history = train_agents(rng_seed=seed, verbose=False, **kwargs)
+        
+        final_individual = history['individual_profits'][-1]
+        final_joint = history['joint_profits'][-1]
+        
+        # Get equilibrium for ratios
+        nash_eq = env.get_nash_equilibrium()
+        
+        results['individual_profits'].append(final_individual)
+        results['joint_profits'].append(final_joint)
+        results['nash_ratios_individual'].append(final_individual / nash_eq['individual_profit'])
+        results['nash_ratios_joint'].append(final_joint / nash_eq['joint_profit'])
+        
+        print(f"Seed {seed}: Individual {final_individual:.4f}, Joint {final_joint:.4f}")
+    
+    # Summary statistics
+    results['stats'] = {
+        'individual_mean': np.mean(results['individual_profits']),
+        'individual_std': np.std(results['individual_profits']),
+        'joint_mean': np.mean(results['joint_profits']),
+        'joint_std': np.std(results['joint_profits']),
+        'nash_ratio_individual_mean': np.mean(results['nash_ratios_individual']),
+        'nash_ratio_joint_mean': np.mean(results['nash_ratios_joint'])
+    }
+    
+    print(f"\n📊 Multi-seed Results (n={n_seeds}):")
+    print(f"   Individual: {results['stats']['individual_mean']:.4f} ± {results['stats']['individual_std']:.4f}")
+    print(f"   Joint: {results['stats']['joint_mean']:.4f} ± {results['stats']['joint_std']:.4f}")
+    print(f"   Nash ratio: {results['stats']['nash_ratio_individual_mean']:.1%}")
+    
+    return results

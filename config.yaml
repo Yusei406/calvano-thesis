@@ -1,39 +1,38 @@
-# Calvano et al. (2020) Configuration
-# Paper-exact parameters for Q-learning algorithmic pricing
+# Calvano et al. (2020) Q-learning Configuration
+# 卒論向け再現実装用設定
 
-calvano_params:
-  # Simulation parameters
-  n_episodes: 50000
+# Environment Parameters (Demand Model)
+environment:
   n_agents: 2
-  n_actions: 11
-  
-  # Learning parameters (Table A1)
-  learning_rate: 0.1      # α
-  discount_factor: 0.95   # δ
-  epsilon: 0.1           # ε₀ initial exploration
-  epsilon_decay: 0.95    # γ decay rate
-  
-  # Demand function parameters
-  demand_intercept: 2.0   # a₀
-  demand_slope: 1.0       # μ 
-  marginal_cost: 0.0      # c
-  outside_option: true
-  
-  # Convergence criteria
-  convergence_window: 1000
-  convergence_tolerance: 1e-4
-  
-  # Price grid
-  price_min: 0.0
-  price_max: 1.0
+  demand_intercept: 0.0        # a_0 (outside option utility)
+  demand_slope: 0.25           # μ (price sensitivity parameter)
+  marginal_cost: 1.0           # c (marginal cost)
+  product_quality: 2.0         # a_i (product quality, same for all)
 
-# Alternative configurations for sensitivity analysis
-sensitivity:
-  grid_sizes: [11, 21, 41]
-  mu_values: [0.25, 1.0, 4.0]
-  
-# Paper targets for validation
-paper_targets:
-  individual_profit: 0.18
-  joint_profit: 0.26
-  convergence_rate: 0.9
+# Price Grid Parameters
+grid:
+  size: 15                     # m = 15 price points
+  extension: 0.1               # ξ = 0.1 (grid extension parameter)
+
+# Q-learning Parameters
+qlearning:
+  learning_rate: 0.15          # α (Q-learning step size)
+  discount_factor: 0.95        # γ (future reward discount)
+  epsilon_initial: 1.0         # Initial exploration rate
+  epsilon_decay_beta: 9.21e-5  # β calculated for ε(25000) ≈ 0.1
+  memory_length: 1             # k = 1 (state memory periods)
+
+# Training Parameters
+training:
+  n_episodes: 2000             # Maximum episodes
+  iterations_per_episode: 25000 # Iterations within each episode
+
+# Multi-seed Validation
+validation:
+  n_seeds: 5                   # Number of random seeds for statistical validation
+  seeds: [42, 123, 456, 789, 999]
+
+# Output Configuration
+output:
+  save_results: true
+  results_dir: "results"

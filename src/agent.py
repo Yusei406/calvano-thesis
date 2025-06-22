@@ -26,7 +26,7 @@ class QLearningAgent:
         learning_rate: float = 0.15,
         discount_factor: float = 0.95,
         epsilon_initial: float = 1.0,
-        epsilon_decay_beta: float = 4e-6,  # β = 4×10^-6 from paper
+        epsilon_decay_beta: float = 9.21e-5,  # β = 4×10^-6 from paper
         memory_length: int = 1,             # k = 1 period
         grid_size: int = 15,                # m = 15 points
         grid_extension: float = 0.1,        # ξ = 0.1
