@@ -1,0 +1,11 @@
+{
+  "individual_mean": 0.33711658811262557,
+  "individual_std": 0.02784889557701653,
+  "joint_mean": 0.6103327963800972,
+  "joint_std": 0.0012528019869874063,
+  "target_individual": 0.18,
+  "target_joint": 0.26,
+  "n_seeds": 2,
+  "episodes": 100,
+  "elapsed_time_minutes": 4.613866221904755
+}
