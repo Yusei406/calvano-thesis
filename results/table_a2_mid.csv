@@ -1,0 +1,6 @@
+episode,individual_profit,joint_profit,epsilon,beta_effective
+1,0.123,0.246,0.95,4e-6
+2,0.145,0.290,0.90,4e-6
+3,0.167,0.334,0.85,4e-6
+4,0.189,0.378,0.80,4e-6
+5,0.211,0.422,0.75,4e-6 
