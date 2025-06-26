@@ -1,5 +1,7 @@
 # Calvano et al. (2020) Q-Learning Replication
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Yusei406/calvano-thesis/blob/parallel-colab/calvano_colab.ipynb)
+
 Complete Python implementation of Calvano et al. (2020) "Artificial Intelligence, Algorithmic Pricing, and Collusion" with modern package structure and parallel execution support.
 
 ## 🚀 Quick Start
