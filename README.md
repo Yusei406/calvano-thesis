@@ -6,6 +6,25 @@ Complete Python implementation of Calvano et al. (2020) "Artificial Intelligence
 
 ## 🚀 Quick Start
 
+### Google Colab (推奨)
+
+**論文レベルの完全実験**をGoogle Colabで実行：
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Yusei406/calvano-thesis/blob/parallel-colab/calvano_colab.ipynb)
+
+**Colabでの実行手順：**
+1. 上記バッジをクリックしてColabで開く
+2. **クイックテスト**（5分）で動作確認
+3. **フル実験**（8-12時間）で完全再現
+4. 結果を自動ダウンロード
+
+**フル実験パラメータ：**
+- **50,000エピソード × 10シード**
+- **25,000 iterations per episode** 
+- **論文Table A.2の完全再現**
+
+### ローカル環境での実行
+
 ### Installation
 
 ```bash
