@@ -18,9 +18,34 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import numpy as np
+from datetime import datetime
 
 # Use relative imports for package modules
 from ..train import train_agents
+
+
+def print_progress(completed: int, total: int, start_time: float, last_result: Dict = None):
+    """Print progress information with time estimates."""
+    elapsed = time.time() - start_time
+    if completed > 0:
+        rate = completed / elapsed
+        eta = (total - completed) / rate if rate > 0 else 0
+        eta_str = f"{eta/3600:.1f}h" if eta > 3600 else f"{eta/60:.1f}m"
+    else:
+        eta_str = "calculating..."
+    
+    progress_percent = (completed / total) * 100
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    
+    print(f"[{timestamp}] 📊 進捗: {completed}/{total} ({progress_percent:.1f}%) | "
+          f"経過時間: {elapsed/60:.1f}m | 残り時間: {eta_str}")
+    
+    if last_result and last_result.get('success'):
+        nash_ratio = last_result.get('nash_ratio_individual', 0) * 100
+        individual_profit = last_result.get('final_individual_profit', 0)
+        print(f"   最新結果: Individual={individual_profit:.3f}, Nash比={nash_ratio:.1f}%")
+    
+    print()
 
 
 def run_single_session(
@@ -55,6 +80,10 @@ def run_single_session(
     session_seed = seed * 1000 + session_id
     
     try:
+        # Print session start
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] 🎯 セッション開始: Seed={seed}, Session={session_id} (総エピソード={n_episodes:,})")
+        
         agents, env, history = train_agents(
             n_episodes=n_episodes,
             iterations_per_episode=iterations_per_episode,
@@ -74,6 +103,12 @@ def run_single_session(
         # Get equilibrium benchmarks
         nash_eq = env.get_nash_equilibrium()
         coop_eq = env.get_collusive_outcome()
+        
+        # Print session completion
+        nash_ratio = (final_individual / nash_eq['individual_profit']) * 100
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] ✅ セッション完了: Seed={seed}, Session={session_id} | "
+              f"Individual={final_individual:.3f}, Nash比={nash_ratio:.1f}%")
         
         return {
             'seed': seed,
@@ -110,6 +145,9 @@ def run_single_session(
         }
         
     except Exception as e:
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] ❌ セッションエラー: Seed={seed}, Session={session_id} | エラー: {str(e)}")
+        
         return {
             'seed': seed,
             'session_id': session_id,
@@ -119,6 +157,42 @@ def run_single_session(
             'final_individual_profit': None,
             'final_joint_profit': None
         }
+
+
+def send_completion_notification(results: Dict[str, Any], elapsed_time: float):
+    """Send completion notification (can be extended for email, Slack, etc.)"""
+    stats = results['aggregated_stats']
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    notification = f"""
+🎉 フル実験完了通知 🎉
+
+実行時間: {elapsed_time/3600:.1f}時間 ({elapsed_time/60:.0f}分)
+完了時刻: {timestamp}
+
+📊 最終結果:
+• Individual Profit: {stats['individual_profit_mean']:.4f} ± {stats['individual_profit_std']:.4f}
+• Joint Profit: {stats['joint_profit_mean']:.4f} ± {stats['joint_profit_std']:.4f}
+• Nash Ratio: {stats['nash_ratio_mean']*100:.1f}% ± {stats['nash_ratio_std']*100:.1f}%
+
+🎯 論文目標値:
+• Individual Profit: 0.18 ± 0.03
+• Joint Profit: 0.26 ± 0.04
+
+結果ファイル: results/table_a2_parallel.csv
+"""
+    
+    print("=" * 80)
+    print(notification)
+    print("=" * 80)
+    
+    # Save notification to file
+    with open('results/completion_notification.txt', 'w') as f:
+        f.write(notification)
+    
+    # You can add email/Slack notification here
+    # send_email_notification(notification)
+    # send_slack_notification(notification)
 
 
 def run_parallel_experiment(
@@ -186,6 +260,11 @@ def run_parallel_experiment(
     # Run sessions in parallel
     results = []
     completed = 0
+    total_sessions = len(session_params)
+    last_result = None
+    
+    print(f"🚀 並列実行開始: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print_progress(completed, total_sessions, start_time)
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
@@ -201,16 +280,11 @@ def run_parallel_experiment(
                 result = future.result()
                 results.append(result)
                 completed += 1
+                last_result = result if result['success'] else last_result
                 
-                if result['success']:
-                    print(f"✅ Session {completed}/{len(session_params)}: "
-                          f"Seed {result['seed']}, Session {result['session_id']} - "
-                          f"Individual: {result['final_individual_profit']:.4f}, "
-                          f"Joint: {result['final_joint_profit']:.4f}")
-                else:
-                    print(f"❌ Session {completed}/{len(session_params)}: "
-                          f"Seed {result['seed']}, Session {result['session_id']} - "
-                          f"Error: {result['error']}")
+                # Print progress every 5 completions or on first/last
+                if completed % 5 == 0 or completed == 1 or completed == total_sessions:
+                    print_progress(completed, total_sessions, start_time, last_result)
                 
             except Exception as e:
                 print(f"❌ Session failed: {e}")
@@ -285,13 +359,18 @@ def run_parallel_experiment(
     with open(output_file, 'w') as f:
         json.dump(aggregated_results, f, indent=2)
     
-    print(f"\n📊 Experiment completed in {time.time() - start_time:.1f} seconds")
+    elapsed_time = time.time() - start_time
+    
+    print(f"\n📊 Experiment completed in {elapsed_time:.1f} seconds")
     print(f"   Successful sessions: {len(successful_results)}/{len(session_params)}")
     
     if successful_results:
         print(f"   Individual profit: {aggregated_results['aggregated_stats']['individual_profit_mean']:.4f} ± {aggregated_results['aggregated_stats']['individual_profit_std']:.4f}")
         print(f"   Joint profit: {aggregated_results['aggregated_stats']['joint_profit_mean']:.4f} ± {aggregated_results['aggregated_stats']['joint_profit_std']:.4f}")
         print(f"   Nash ratio: {aggregated_results['aggregated_stats']['nash_ratio_mean']:.1%} ± {aggregated_results['aggregated_stats']['nash_ratio_std']:.1%}")
+        
+        # Send completion notification
+        send_completion_notification(aggregated_results, elapsed_time)
     
     print(f"   Results saved to: {output_file}")
     
