@@ -9,7 +9,7 @@ description = "Complete Python implementation of Calvano et al. (2020) Q-learnin
 authors = [
     {name = "Yusei Nozawa", email = "yusei.nozawa@example.com"}
 ]
-readme = "README_COMPLETE.md"
+readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.8"
 keywords = ["economics", "q-learning", "algorithmic-pricing", "collusion", "replication"]

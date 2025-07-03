@@ -101,18 +101,18 @@ def train_agents(
         # Inner loop: iterations within episode
         for iteration in range(iterations_per_episode):
             current_prices = env.current_prices.copy()
-            
+
             # Agent actions
             new_prices = np.zeros(env.n_agents)
             for i, agent in enumerate(agents):
-                new_prices[i] = agent.step(current_prices, env.compute_profits(current_prices))
-            
+                new_prices[i] = agent.step(current_prices)
+
             # Environment step
             _, rewards, _, info = env.step(new_prices)
-            
-            # Agent learning updates
-            for agent in agents:
-                agent.learn(new_prices)
+
+            # Agent learning updates with received rewards
+            for i, agent in enumerate(agents):
+                agent.learn(rewards[i], new_prices)
             
             # Sample episode data
             if iteration % 250 == 0:
