@@ -95,24 +95,29 @@ def train_agents(
         env.reset()
         for agent in agents:
             agent.reset_episode()
-        
+
+        # Initial rewards from starting prices
+        prev_rewards = env.compute_profits(env.current_prices)
         episode_profits = []
-        
+
         # Inner loop: iterations within episode
         for iteration in range(iterations_per_episode):
             current_prices = env.current_prices.copy()
-            
-            # Agent actions
+
+            # Agent actions based on previous rewards
             new_prices = np.zeros(env.n_agents)
             for i, agent in enumerate(agents):
-                new_prices[i] = agent.step(current_prices, env.compute_profits(current_prices))
-            
-            # Environment step
+                new_prices[i] = agent.step(current_prices, prev_rewards)
+
+            # Environment step to obtain new rewards
             _, rewards, _, info = env.step(new_prices)
-            
-            # Agent learning updates
+
+            # Agent learning updates with rewards from this step
             for agent in agents:
-                agent.learn(new_prices)
+                agent.learn(rewards, new_prices)
+
+            # Update previous rewards
+            prev_rewards = rewards
             
             # Sample episode data
             if iteration % 250 == 0:
