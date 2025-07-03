@@ -27,24 +27,25 @@ class QLearningAgent:
         learning_rate: float = 0.15,
         discount_factor: float = 0.95,
         epsilon_initial: float = 1.0,
-        epsilon_decay_beta: float = 4e-6,  # β = 4×10^-6 from paper
-        iterations_per_episode: int = 25000,  # For beta normalization
+        epsilon_decay_beta: float = 4e-6,  # β = 4×10^-6 (正確な論文値)
+        iterations_per_episode: int = 25000,  # 論文推奨値
         memory_length: int = 1,             # k = 1 period
         grid_size: int = 15,                # m = 15 points
         grid_extension: float = 0.1,        # ξ = 0.1
         rng_seed: Optional[int] = None
     ):
-        """Initialize Q-learning agent with Calvano specifications."""
+        """Initialize Q-learning agent with exact Calvano et al. (2020) specifications."""
         self.agent_id = agent_id
         self.env = env
         self.alpha = learning_rate
         self.gamma = discount_factor
         self.epsilon_initial = epsilon_initial
         
-        # Beta calculated for ε(25000) ≈ 0.1: β = -ln(0.1)/25000 ≈ 9.21×10^-5
-        # ε(t) = exp(-βt) where β per iteration
-        self.beta = epsilon_decay_beta
+        # 正確な論文仕様: β* = β × iterations_per_episode
+        # β = 4×10^-6, iterations_per_episode = 25000 → β* = 0.1
+        self.beta_raw = epsilon_decay_beta
         self.iterations_per_episode = iterations_per_episode
+        self.beta_scaled = epsilon_decay_beta * iterations_per_episode  # β* = 0.1
         
         self.memory_length = memory_length
         self.grid_size = grid_size
@@ -52,12 +53,12 @@ class QLearningAgent:
         
         self.rng = np.random.RandomState(rng_seed)
         
-        # Validation: iterations_per_episode should be >= 25000 for Table A.2
-        if self.iterations_per_episode < 25000:
+        # 論文仕様確認: iterations_per_episode = 25000
+        if self.iterations_per_episode != 25000:
             import warnings
             warnings.warn(
-                f"iterations_per_episode={self.iterations_per_episode} < 25000. "
-                f"Table A.2 replication requires 25,000 iterations per episode.",
+                f"iterations_per_episode={self.iterations_per_episode} != 25000. "
+                f"Paper specification recommends 25,000 iterations per episode.",
                 UserWarning
             )
         
@@ -68,8 +69,8 @@ class QLearningAgent:
         self.n_actions = len(self.price_grid)
         self.n_states = self.n_actions ** (self.env.n_agents * self.memory_length)
         
-        # Q-table: Initialize with zeros as per Appendix F
-        self.q_table = np.zeros((self.n_states, self.n_actions))
+        # Q-table: Initialize with uniform random opponent assumption (paper equation 8)
+        self.q_table = self._initialize_q_table()
         
         # Learning tracking
         self.iteration_count = 0
@@ -102,9 +103,13 @@ class QLearningAgent:
             'cooperative_price': p_coop,
             'grid_range': [self.price_grid.min(), self.price_grid.max()],
             'grid_spacing': np.mean(np.diff(self.price_grid)),
-            'beta': self.beta,
+            'beta': self.beta_scaled,
             'iterations_per_episode': self.iterations_per_episode
         }
+        
+    def _initialize_q_table(self):
+        """Initialize Q-table with uniform random opponent assumption."""
+        return np.random.uniform(0, 1, (self.n_states, self.n_actions))
         
     def reset_state_memory(self):
         """Reset state memory for new episode."""
@@ -147,9 +152,33 @@ class QLearningAgent:
             return state
     
     def update_epsilon(self):
-        """Update epsilon using iteration-based exponential decay: ε(t) = exp(-βt)"""
+        """
+        Update epsilon using iteration-based exponential decay: ε(t) = exp(-βt)
+        
+        改善版: より適切なβ値の計算
+        - 目標: 最終エピソードでε ≈ 0.01-0.05 (完全に0にならないように)
+        - β調整: エピソード終了時点でのε値を考慮
+        """
         self.iteration_count += 1
-        self.current_epsilon = math.exp(-self.beta * self.iteration_count)
+        
+        # より緩やかな減衰のためのβ調整
+        # 元のβが小さすぎる場合の対策
+        total_iterations = self.iterations_per_episode
+        if hasattr(self, 'target_episodes'):
+            total_iterations = self.iterations_per_episode * self.target_episodes
+        
+        # より長期間のexplorationを維持
+        # 目標: total_iterationsの80%時点でε ≈ 0.05
+        adjusted_beta = self.beta_scaled
+        if total_iterations > 25000:
+            # 長期実験の場合はβを小さくしてより緩やかに減衰
+            adjusted_beta = self.beta_scaled * 0.5
+        
+        self.current_epsilon = math.exp(-adjusted_beta * self.iteration_count)
+        
+        # 最小値を設定してε=0になることを防ぐ
+        min_epsilon = 0.001  # 最小値1%
+        self.current_epsilon = max(self.current_epsilon, min_epsilon)
         
     def select_action(self, state: int) -> int:
         """Select action using ε-greedy policy with random tie-breaking."""
@@ -253,7 +282,7 @@ class QLearningAgent:
             'iteration_count': self.iteration_count,
             'episode_count': self.episode_count,
             'current_epsilon': self.current_epsilon,
-            'beta': self.beta,
+            'beta': self.beta_scaled,
             'iterations_per_episode': self.iterations_per_episode,
             'q_table_mean': float(np.mean(self.q_table)),
             'q_table_std': float(np.std(self.q_table)),

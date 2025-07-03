@@ -45,6 +45,8 @@ def print_progress(completed: int, total: int, start_time: float, last_result: D
         individual_profit = last_result.get('final_individual_profit', 0)
         print(f"   最新結果: Individual={individual_profit:.3f}, Nash比={nash_ratio:.1f}%")
     
+    # ハートビート（セッション維持）
+    print("💓 セッション維持中...", flush=True)
     print()
 
 
@@ -282,9 +284,13 @@ def run_parallel_experiment(
                 completed += 1
                 last_result = result if result['success'] else last_result
                 
-                # Print progress every 5 completions or on first/last
-                if completed % 5 == 0 or completed == 1 or completed == total_sessions:
+                # より頻繁な進捗表示（毎回 or 2回ごと）
+                if completed % 2 == 0 or completed == 1 or completed == total_sessions:
                     print_progress(completed, total_sessions, start_time, last_result)
+                    
+                # 中間結果の保存（進捗の保持）
+                if completed % 5 == 0 or completed == total_sessions:
+                    save_intermediate_results(results, output_dir, completed, total_sessions)
                 
             except Exception as e:
                 print(f"❌ Session failed: {e}")
@@ -375,6 +381,27 @@ def run_parallel_experiment(
     print(f"   Results saved to: {output_file}")
     
     return aggregated_results
+
+
+def save_intermediate_results(results: List[Dict], output_dir: str, completed: int, total: int):
+    """中間結果を保存（実験中断時の復旧用）"""
+    try:
+        # 中間結果ファイル
+        intermediate_file = os.path.join(output_dir, f"intermediate_results_{completed}of{total}.json")
+        
+        with open(intermediate_file, 'w') as f:
+            json.dump({
+                'completed_sessions': completed,
+                'total_sessions': total,
+                'completion_percentage': (completed / total) * 100,
+                'timestamp': datetime.now().isoformat(),
+                'results': results
+            }, f, indent=2)
+            
+        print(f"💾 中間結果保存: {intermediate_file}")
+        
+    except Exception as e:
+        print(f"⚠️  中間結果保存失敗: {e}")
 
 
 def main():

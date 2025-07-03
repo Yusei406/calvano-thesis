@@ -10,11 +10,13 @@ def make_grid(p_nash: float, p_coop: float, xi: float = 0.1, m: int = 15) -> np.
     """
     Generate dynamic price grid based on Nash and cooperative prices.
     
+    正確な論文仕様: [p^N - ξ(p^M - p^N), p^M + ξ(p^M - p^N)]
+    
     Args:
-        p_nash: Nash equilibrium price
-        p_coop: Cooperative (monopoly) price  
-        xi: Grid extension parameter (0.1 in Calvano paper)
-        m: Number of grid points (15 in Calvano paper)
+        p_nash: Nash equilibrium price (p^N)
+        p_coop: Cooperative (monopoly) price (p^M)
+        xi: Grid extension parameter (ξ = 0.1 in Calvano paper)
+        m: Number of grid points (m = 15 in Calvano paper)
     
     Returns:
         Array of m equally spaced price points
@@ -28,10 +30,14 @@ def make_grid(p_nash: float, p_coop: float, xi: float = 0.1, m: int = 15) -> np.
         print(f"Warning: p_coop ({p_coop:.3f}) <= p_nash ({p_nash:.3f}), adjusting...")
         p_coop = p_nash + 1.0  # Force separation
     
-    # Grid bounds with extension
-    extension = xi * (p_coop - p_nash)
-    p_min = max(0.1, p_nash - extension)  # Ensure positive lower bound
-    p_max = p_coop + extension
+    # 論文仕様の価格グリッド範囲計算
+    # [p^N - ξ(p^M - p^N), p^M + ξ(p^M - p^N)]
+    price_diff = p_coop - p_nash
+    p_min = p_nash - xi * price_diff
+    p_max = p_coop + xi * price_diff
+    
+    # Ensure positive lower bound
+    p_min = max(0.1, p_min)
     
     # Generate grid
     grid = np.linspace(p_min, p_max, m)

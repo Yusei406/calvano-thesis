@@ -70,10 +70,15 @@ def train_agents(
         'epsilon_values': [],
         'total_iterations': 0,
         'beta_info': {
-            'beta_raw': epsilon_decay_beta,
+            'beta_raw': epsilon_decay_beta,  # β = 4×10^-6
+            'beta_scaled': epsilon_decay_beta * iterations_per_episode,  # β* = 0.1 (25000回時)
             'iterations_per_episode': iterations_per_episode,
-            'beta_effective': epsilon_decay_beta / iterations_per_episode,
-            'epsilon_at_convergence': np.exp(-epsilon_decay_beta * iterations_per_episode)
+            'epsilon_at_convergence': np.exp(-epsilon_decay_beta * iterations_per_episode * iterations_per_episode),
+            'paper_specification': {
+                'beta_raw': 4e-6,
+                'beta_scaled_25k': 0.1,
+                'iterations_recommended': 25000
+            }
         }
     }
     
@@ -136,9 +141,32 @@ def train_agents(
         history['total_iterations'] = (episode + 1) * iterations_per_episode
         
         # Progress reporting
-        if verbose and (episode % 100 == 0 or episode < 10):
-            nash_ratio = episode_individual / nash_eq['individual_profit']
-            print(f"Episode {episode:>4d} | Individual: {episode_individual:.4f} ({nash_ratio:.1%} Nash) | ε: {agents[0].current_epsilon:.4f}")
+        if verbose:
+            # エピソード数に応じて表示間隔を調整
+            if n_episodes <= 1000:
+                display_interval = 50  # 1000エピソード以下: 50ごと
+            elif n_episodes <= 5000:
+                display_interval = 100  # 5000エピソード以下: 100ごと
+            elif n_episodes <= 10000:
+                display_interval = 250  # 10000エピソード以下: 250ごと
+            else:
+                display_interval = 500  # それ以上: 500ごと
+            
+            # 進捗表示条件
+            should_display = (
+                episode % display_interval == 0 or  # 定期表示
+                episode < 10 or                     # 最初の10エピソード
+                episode in [100, 500, 1000, 2500, 5000, 10000]  # マイルストーン
+            )
+            
+            if should_display:
+                nash_ratio = episode_individual / nash_eq['individual_profit']
+                elapsed_episodes = episode + 1
+                progress_pct = (elapsed_episodes / n_episodes) * 100
+                
+                print(f"Episode {episode:>5d} ({progress_pct:5.1f}%) | "
+                      f"Individual: {episode_individual:.4f} ({nash_ratio:.1%} Nash) | "
+                      f"ε: {agents[0].current_epsilon:.4f}")
     
     # Final summary
     final_individual = history['individual_profits'][-1]
