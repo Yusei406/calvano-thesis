@@ -180,42 +180,44 @@ class QLearningAgent:
         new_q = current_q + self.alpha * (reward + self.gamma * best_next_q - current_q)
         self.q_table[state, action] = new_q
         
-    def step(self, opponent_prices: np.ndarray, rewards: np.ndarray) -> float:
-        """
-        Execute one learning step.
-        
-        Args:
-            opponent_prices: Current prices of all agents
-            rewards: Rewards for all agents
-            
-        Returns:
-            Selected price for this agent
+    def step(self, opponent_prices: np.ndarray) -> float:
+        """Select a price for the current iteration.
+
+        Parameters
+        ----------
+        opponent_prices : np.ndarray
+            Current prices of all agents. The agent encodes the state using
+            the opponent's price from the previous period.
+
+        Returns
+        -------
+        float
+            The price chosen by the agent for this iteration.
         """
         # Encode current state
         current_state = self._encode_state(opponent_prices)
-        
+
         # Select action
         action = self.select_action(current_state)
         selected_price = self._index_to_price(action)
-        
-        # Store experience for potential Q-table update
+
+        # Store state-action pair for learning after reward is observed
         self.last_state = current_state
         self.last_action = action
-        self.last_reward = rewards[self.agent_id]
-        
-        # Update epsilon (iteration_count incremented inside update_epsilon)
+
+        # Update epsilon after each action
         self.update_epsilon()
-        
+
         return selected_price
     
-    def learn(self, next_opponent_prices: np.ndarray):
-        """Update Q-table based on observed transition."""
+    def learn(self, reward: float, next_opponent_prices: np.ndarray):
+        """Update the Q-table using the observed reward and next state."""
         if hasattr(self, 'last_state'):
             next_state = self._encode_state(next_opponent_prices)
             self.update_q_table(
                 self.last_state,
-                self.last_action, 
-                self.last_reward,
+                self.last_action,
+                reward,
                 next_state
             )
     
@@ -239,11 +241,7 @@ class QLearningAgent:
     
     def update(self, observation, actions, rewards):
         """Update agent for compatibility with existing interface."""
-        # Update Q-table
-        self.learn(observation)
-        
-        # Update epsilon
-        self.update_epsilon()
+        self.learn(rewards[self.agent_id], observation)
     
     def get_stats(self) -> Dict[str, Any]:
         """Get agent statistics."""

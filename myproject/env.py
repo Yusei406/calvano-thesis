@@ -91,8 +91,9 @@ class DemandEnvironment:
         return self.current_prices.copy(), rewards, done, info
     
     def reset(self) -> np.ndarray:
-        """Reset environment to initial state."""
-        self.current_prices = np.zeros(self.n_agents)
+        """Reset environment to the Nash equilibrium state."""
+        nash_price = self.compute_nash_equilibrium()
+        self.current_prices = np.full(self.n_agents, nash_price)
         self.episode_step = 0
         return self.current_prices.copy()
     
