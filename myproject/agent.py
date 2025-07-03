@@ -208,14 +208,15 @@ class QLearningAgent:
         
         return selected_price
     
-    def learn(self, next_opponent_prices: np.ndarray):
-        """Update Q-table based on observed transition."""
+    def learn(self, rewards: np.ndarray, next_opponent_prices: np.ndarray):
+        """Update Q-table using reward from the last action."""
         if hasattr(self, 'last_state'):
             next_state = self._encode_state(next_opponent_prices)
+            reward = rewards[self.agent_id]
             self.update_q_table(
                 self.last_state,
-                self.last_action, 
-                self.last_reward,
+                self.last_action,
+                reward,
                 next_state
             )
     
@@ -240,8 +241,8 @@ class QLearningAgent:
     def update(self, observation, actions, rewards):
         """Update agent for compatibility with existing interface."""
         # Update Q-table
-        self.learn(observation)
-        
+        self.learn(rewards, observation)
+
         # Update epsilon
         self.update_epsilon()
     
