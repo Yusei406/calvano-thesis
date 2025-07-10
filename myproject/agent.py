@@ -161,20 +161,15 @@ class QLearningAgent:
         """
         self.iteration_count += 1
         
-        # より緩やかな減衰のためのβ調整
-        # 元のβが小さすぎる場合の対策
-        total_iterations = self.iterations_per_episode
-        if hasattr(self, 'target_episodes'):
-            total_iterations = self.iterations_per_episode * self.target_episodes
-        
-        # より長期間のexplorationを維持
-        # 目標: total_iterationsの80%時点でε ≈ 0.05
-        adjusted_beta = self.beta_scaled
-        if total_iterations > 25000:
-            # 長期実験の場合はβを小さくしてより緩やかに減衰
-            adjusted_beta = self.beta_scaled * 0.5
-        
-        self.current_epsilon = math.exp(-adjusted_beta * self.iteration_count)
+        # Calvano et al. (2020) spec:
+        # ε(t) = exp(-β * t) where β is the *raw* coefficient (4e-6).
+        # β* = β × iterations_per_episode is only a descriptive statistic, not
+        # used directly in the decay formula. Using beta_scaled here causes an
+        # extra multiplication by iterations_per_episode, making ε collapse to
+        # the minimum after a few hundred iterations. We therefore use
+        # beta_raw for the decay and drop the ad-hoc scaling.
+
+        self.current_epsilon = math.exp(-self.beta_raw * self.iteration_count)
         
         # 最小値を設定してε=0になることを防ぐ
         min_epsilon = 0.001  # 最小値1%
